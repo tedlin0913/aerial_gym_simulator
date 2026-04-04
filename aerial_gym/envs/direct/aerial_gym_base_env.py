@@ -31,11 +31,13 @@ import math
 import torch
 
 import isaaclab.sim as sim_utils
-from isaaclab.assets import Articulation
+from isaaclab.assets import Articulation, ArticulationCfg
 from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainImporterCfg
+from dataclasses import MISSING
+
 from isaaclab.utils import configclass
 
 from aerial_gym.utils.logging import CustomLogger
@@ -46,6 +48,9 @@ logger = CustomLogger("aerial_gym_base_env")
 @configclass
 class AerialGymBaseEnvCfg(DirectRLEnvCfg):
     """Base configuration shared by all aerial_gym Isaac Lab environments."""
+
+    # Robot asset — must be provided by subclass cfg
+    robot: ArticulationCfg = MISSING
 
     # Simulation
     sim: SimulationCfg = SimulationCfg(
@@ -112,8 +117,7 @@ class AerialGymBaseEnv(DirectRLEnv):
         render_mode: str | None = None,
         **kwargs,
     ):
-        # Set robot ArticulationCfg before super().__init__ calls _setup_scene
-        self.cfg.robot = self._setup_robot_cfg()
+        # cfg.robot must already be set by the subclass cfg (it's a @configclass field)
         super().__init__(cfg, render_mode, **kwargs)
 
         self._init_global_tensor_dict()
@@ -137,10 +141,6 @@ class AerialGymBaseEnv(DirectRLEnv):
     # =========================================================================
     # Override in subclasses
     # =========================================================================
-
-    def _setup_robot_cfg(self):
-        """Return an ArticulationCfg for the robot. Called before _setup_scene."""
-        raise NotImplementedError("Subclass must implement _setup_robot_cfg()")
 
     def _setup_control_allocator(self):
         """Return a ControlAllocator instance. Called after super().__init__."""
@@ -268,25 +268,6 @@ class AerialGymBaseEnv(DirectRLEnv):
     def get_obs(self) -> dict:
         """Return the global tensor dict (same interface as EnvManager.get_obs())."""
         return self.obs_dict
-
-    def step(self, actions: torch.Tensor) -> None:
-        """Thin wrapper called by PositionSetpointTask.sim_env.step()."""
-        # DirectRLEnv.step() handles the full RL step loop internally.
-        # This wrapper exists for compatibility with the existing task interface
-        # which calls sim_env.step(actions) directly.
-        raise RuntimeError(
-            "Call DirectRLEnv.step() directly, not sim_env.step(). "
-            "PositionSetpointTask should be updated to use the DirectRLEnv interface."
-        )
-
-    def reset(self) -> None:
-        """Reset all environments."""
-        env_ids = torch.arange(self.num_envs, device=self.device)
-        self._reset_idx(env_ids)
-
-    def reset_idx(self, env_ids: torch.Tensor) -> None:
-        """Reset specific environments."""
-        self._reset_idx(env_ids)
 
     @property
     def sim_steps(self) -> torch.Tensor:

@@ -36,6 +36,10 @@ logger = CustomLogger("position_setpoint_env")
 class PositionSetpointEnvCfg(AerialGymBaseEnvCfg):
     """Configuration for position setpoint task."""
 
+    # Robot asset — use the base_quadrotor URDF via Isaac Lab
+    # Replace prim_path placeholder with actual Isaac Lab env path pattern
+    robot = BASE_QUAD_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+
     # Episode: 500 steps × 0.01s = 5s (matches position_setpoint_task_config.py)
     episode_length_s: float = 5.0
     decimation: int = 2
@@ -103,10 +107,6 @@ class PositionSetpointEnv(AerialGymBaseEnv):
     # =========================================================================
     # AerialGymBaseEnv interface
     # =========================================================================
-
-    def _setup_robot_cfg(self):
-        """Use the base_quadrotor URDF asset."""
-        return BASE_QUAD_CFG
 
     def _setup_control_allocator(self):
         """Build ControlAllocator from BaseQuadCfg (same config as before migration)."""

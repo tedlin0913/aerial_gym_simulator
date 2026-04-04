@@ -14,6 +14,16 @@ IMPORTANT: This script uses the Isaac Lab AppLauncher pattern.
 # ===========================================================================
 # Step 1: Launch SimulationApp FIRST (Omniverse bootstrap requirement)
 # ===========================================================================
+
+# aerial_gym/__init__.py imports isaacgym unconditionally — stub it so
+# we can import aerial_gym submodules under Isaac Lab without crashing.
+import sys
+from unittest.mock import MagicMock
+for _m in ["isaacgym", "isaacgym.gymapi", "isaacgym.gymtorch", "isaacgym.gymutil",
+           "isaacgym.torch_utils", "pytorch3d", "pytorch3d.transforms", "urdfpy"]:
+    if _m not in sys.modules:
+        sys.modules[_m] = MagicMock()
+
 import argparse
 
 from isaaclab.app import AppLauncher
@@ -47,14 +57,15 @@ def main():
     # Create environment
     env = PositionSetpointEnv(cfg=cfg, render_mode=None)
 
-    print(f"[INFO] Environment created: {env.num_envs} envs")
-    print(f"[INFO] Action space: {env.single_action_space}")
-    print(f"[INFO] Observation space: {env.single_observation_space}")
+    print(f"[INFO] Environment created: {env.num_envs} envs", flush=True)
+    print(f"[INFO] Action space: {env.single_action_space}", flush=True)
+    print(f"[INFO] Observation space: {env.single_observation_space}", flush=True)
 
     # Simple random policy loop to validate the env works
+    print("[DBG] Calling env.reset()...", flush=True)
     obs, _ = env.reset()
-    print(f"[INFO] Reset done. Obs keys: {list(obs.keys())}")
-    print(f"[INFO] Policy obs shape: {obs['policy'].shape}")
+    print(f"[INFO] Reset done. Obs keys: {list(obs.keys())}", flush=True)
+    print(f"[INFO] Policy obs shape: {obs['policy'].shape}", flush=True)
 
     for step in range(100):
         actions = torch.rand(
@@ -69,13 +80,20 @@ def main():
                 f"[Step {step:4d}] "
                 f"mean_reward={rewards.mean():.3f}  "
                 f"crashes={terminated.sum().item()}  "
-                f"timeouts={truncated.sum().item()}"
+                f"timeouts={truncated.sum().item()}",
+                flush=True,
             )
 
-    print("[INFO] Validation complete. Environment works correctly.")
+    print("[INFO] Validation complete. Environment works correctly.", flush=True)
     env.close()
 
 
 if __name__ == "__main__":
-    main()
-    simulation_app.close()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] main() failed: {e}", flush=True)
+        traceback.print_exc()
+    finally:
+        simulation_app.close()

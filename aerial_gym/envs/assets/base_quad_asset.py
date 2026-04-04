@@ -20,7 +20,6 @@ from __future__ import annotations
 import os
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg
 
 # Absolute path to the quad URDF (avoids CWD dependency)
@@ -38,6 +37,9 @@ BASE_QUAD_CFG = ArticulationCfg(
         # for per-link force application (force_application_level = "motor_link")
         fix_base=False,
         merge_fixed_joints=False,
+        # quad.urdf has no DOF joints (all fixed) — set joint_drive=None
+        # to skip the stiffness/damping MISSING validation
+        joint_drive=None,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             max_depenetration_velocity=10.0,
@@ -54,18 +56,13 @@ BASE_QUAD_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.5),
         rot=(1.0, 0.0, 0.0, 0.0),  # wxyz identity (Isaac Lab convention)
+        # No joint_pos/joint_vel — quad.urdf has only fixed joints (no DOF)
+        joint_pos={},
+        joint_vel={},
     ),
-    actuators={
-        # All joints in quad.urdf are fixed — no DOF actuators needed.
-        # Forces are applied externally via set_external_force_and_torque().
-        # ImplicitActuatorCfg is required by ArticulationCfg but has no effect
-        # when stiffness=damping=0 on fixed joints.
-        "dummy": ImplicitActuatorCfg(
-            joint_names_expr=[".*"],
-            stiffness=0.0,
-            damping=0.0,
-        ),
-    },
+    # quad.urdf has only fixed joints — no actuators needed.
+    # Forces are applied externally via set_external_force_and_torque().
+    actuators={},
 )
 """ArticulationCfg for aerial_gym base_quadrotor (quad.urdf).
 
