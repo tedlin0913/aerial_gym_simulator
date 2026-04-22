@@ -107,9 +107,19 @@ class AerialGymBaseEnv(DirectRLEnv):
         _get_rewards() → task reward (reads from self.obs_dict)
         _get_dones() → (terminated, time_out) tuple
         _build_observation_tensor() → fills self._obs_buf
+
+    Class-level overrides:
+        _motor_body_names: list of URDF link names for the motor thrust bodies.
+            Default is ["motor_0", "motor_1", "motor_2", "motor_3"] (base_quad layout).
+            Override in subclass for robots with different motor link names,
+            e.g. ["front_right_prop", "back_right_prop", "back_left_prop", "front_left_prop"].
     """
 
     cfg: AerialGymBaseEnvCfg
+
+    # Override in subclass to match motor link names in the URDF.
+    # Order must match allocation_matrix column order in the robot's ControlAllocator config.
+    _motor_body_names: list[str] = ["motor_0", "motor_1", "motor_2", "motor_3"]
 
     def __init__(
         self,
@@ -461,12 +471,13 @@ class AerialGymBaseEnv(DirectRLEnv):
 
     def _find_motor_body_ids(self) -> None:
         """
-        Find Isaac Lab body indices for motor_0..motor_3.
+        Find Isaac Lab body indices for motor thrust links.
+
+        Uses self._motor_body_names (class-level attribute). Override that list in
+        subclasses for robots with non-standard motor link names.
         Isaac Lab uses breadth-first body ordering (may differ from Isaac Gym's depth-first).
         """
-        motor_body_ids, motor_body_names = self._robot.find_bodies(
-            ["motor_0", "motor_1", "motor_2", "motor_3"]
-        )
+        motor_body_ids, motor_body_names = self._robot.find_bodies(self._motor_body_names)
         self._motor_body_ids = motor_body_ids
         logger.info(f"Motor body IDs (Isaac Lab breadth-first order): {motor_body_ids}")
         logger.info(f"Motor body names: {motor_body_names}")
