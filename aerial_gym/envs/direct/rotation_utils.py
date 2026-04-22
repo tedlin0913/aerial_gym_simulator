@@ -1,0 +1,94 @@
+"""
+rotation_utils.py — Rotation representation helpers for Isaac Lab envs.
+
+Replaces pytorch3d.transforms for the functions used in PX4 / end-to-end tasks:
+    quaternion_to_matrix   xyzw  → (N, 3, 3)
+    matrix_to_rotation_6d  (N, 3, 3) → (N, 6)  [first two cols]
+    matrix_to_euler_angles (N, 3, 3) → (N, 3)  ZYX euler
+    euler_angles_to_matrix (N, 3)   → (N, 3, 3) ZYX euler
+
+All functions use isaaclab.utils.math internally.
+Convention: quaternion = xyzw (aerial_gym standard, w at index 3).
+"""
+
+from __future__ import annotations
+
+import torch
+from torch import Tensor
+
+
+def quaternion_to_matrix(q_xyzw: Tensor) -> Tensor:
+    """
+    Convert xyzw quaternion(s) to rotation matrix.
+
+    Args:
+        q_xyzw: (..., 4) quaternion in xyzw convention (w is last)
+
+    Returns:
+        (..., 3, 3) rotation matrix
+    """
+    from isaaclab.utils.math import matrix_from_quat
+
+    # Isaac Lab's matrix_from_quat expects wxyz
+    q_wxyz = torch.roll(q_xyzw, 1, dims=-1)
+    return matrix_from_quat(q_wxyz)
+
+
+def matrix_to_rotation_6d(R: Tensor) -> Tensor:
+    """
+    Convert rotation matrix to 6D continuous rotation representation.
+    Takes the first two columns of R (flattened): [R[:,0], R[:,1]]
+
+    Args:
+        R: (..., 3, 3) rotation matrix
+
+    Returns:
+        (..., 6) — first 3 elements are col 0, next 3 are col 1
+    """
+    return torch.cat([R[..., :, 0], R[..., :, 1]], dim=-1)
+
+
+def matrix_to_euler_angles(R: Tensor, convention: str) -> Tensor:
+    """
+    Convert rotation matrix to Euler angles.
+
+    Args:
+        R: (..., 3, 3) rotation matrix
+        convention: e.g. "ZYX" (matches pytorch3d convention name)
+
+    Returns:
+        (..., 3) Euler angles in radians
+    """
+    from isaaclab.utils.math import euler_xyz_from_quat, quat_from_matrix
+
+    if convention != "ZYX":
+        raise ValueError(f"Only ZYX convention supported, got {convention}")
+
+    # Convert R → quat (wxyz) → euler
+    q_wxyz = quat_from_matrix(R)
+    # Isaac Lab euler_xyz_from_quat returns (roll, pitch, yaw) for xyzw quat
+    q_xyzw = torch.roll(q_wxyz, -1, dims=-1)
+    roll, pitch, yaw = euler_xyz_from_quat(q_xyzw)
+
+    # ZYX convention: return as (roll, pitch, yaw) = (x, y, z) angles
+    return torch.stack([roll, pitch, yaw], dim=-1)
+
+
+def euler_angles_to_matrix(angles: Tensor, convention: str) -> Tensor:
+    """
+    Convert Euler angles to rotation matrix.
+
+    Args:
+        angles: (..., 3) Euler angles in radians
+        convention: e.g. "ZYX"
+
+    Returns:
+        (..., 3, 3) rotation matrix
+    """
+    from isaaclab.utils.math import matrix_from_euler
+
+    if convention != "ZYX":
+        raise ValueError(f"Only ZYX convention supported, got {convention}")
+
+    # matrix_from_euler expects (roll, pitch, yaw) — same as ZYX angles order
+    return matrix_from_euler(angles, convention="ZYX")
