@@ -132,7 +132,17 @@ class AerialGymBaseEnv(DirectRLEnv):
 
         self._init_global_tensor_dict()
         self._control_allocator = self._setup_control_allocator()
-        self._find_motor_body_ids()
+
+        # Detect force application mode from the ControlAllocator.
+        # "motor_link": forces applied individually at each motor body (base_quad, x500 style)
+        # "base_link":  total wrench applied at root body only (lmf2 style)
+        self._force_application_level = self._control_allocator.force_application_level
+
+        if self._force_application_level == "motor_link":
+            self._find_motor_body_ids()
+        else:
+            # base_link mode: no separate motor bodies needed
+            self._motor_body_ids = []
 
         # Action buffer
         self._actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
@@ -149,23 +159,26 @@ class AerialGymBaseEnv(DirectRLEnv):
         self._linvel_quad_damp = _zeros
         self._angvel_lin_damp  = _zeros
         self._angvel_quad_damp = _zeros
-        # Drag force/torque buffers — (N, 1, 3); index 0 = root body slot in combined buffer
+        # Drag force/torque buffers — (N, 1, 3); root body slot
         self._root_drag_force  = torch.zeros(N, 1, 3, device=dev)
         self._root_drag_torque = torch.zeros(N, 1, 3, device=dev)
 
-        # Combined force buffer: root body (drag) + motor bodies (thrust) in one array.
-        # IMPORTANT: Isaac Lab's set_external_force_and_torque() sets has_external_wrench=False
-        # when the passed tensor is all-zeros, even if the internal buffer still holds non-zero
-        # values from a prior call. A second all-zero call (e.g. zero drag) would silently
-        # disable all previously set motor forces. Combining into one call avoids this.
-        # Layout: slot 0 = root body (drag), slots 1..4 = motors.
-        num_force_bodies = 1 + len(self._motor_body_ids)
-        self._all_force_body_ids = [0] + list(self._motor_body_ids)
+        # Combined force buffer: single set_external_force_and_torque call avoids the
+        # has_external_wrench=False bug (second all-zero call disables prior forces).
+        # "motor_link": slot 0 = root drag, slots 1..N = per-motor thrust (N+1 bodies total)
+        # "base_link":  slot 0 = root drag + root thrust combined  (1 body total)
+        if self._force_application_level == "motor_link":
+            num_force_bodies = 1 + len(self._motor_body_ids)
+            self._all_force_body_ids = [0] + list(self._motor_body_ids)
+        else:
+            num_force_bodies = 1
+            self._all_force_body_ids = [0]
         self._combined_forces  = torch.zeros(N, num_force_bodies, 3, device=dev)
         self._combined_torques = torch.zeros(N, num_force_bodies, 3, device=dev)
 
         logger.info(
             f"AerialGymBaseEnv: {self.num_envs} envs, "
+            f"force_application_level={self._force_application_level}, "
             f"motor body IDs={self._motor_body_ids}, "
             f"device={self.device}"
         )
@@ -220,20 +233,27 @@ class AerialGymBaseEnv(DirectRLEnv):
 
     def _apply_action(self) -> None:
         """
-        Apply per-motor forces/torques to the articulation.
+        Apply forces/torques to the articulation.
         Called once per physics substep (decimation times per RL step).
+
+        Uses a single set_external_force_and_torque() call to avoid the
+        has_external_wrench=False bug (see AerialGymBaseEnv docstring).
+
+        "motor_link" mode: slot 0 = root drag, slots 1..N = per-motor thrust
+        "base_link"  mode: slot 0 = root drag + root thrust (summed at root body)
         """
-        # Combine drag (root body slot 0) and motor thrust (slots 1..) into one call.
-        # A single set_external_force_and_torque() call is mandatory: calling it twice
-        # would overwrite has_external_wrench based on the second call's tensor (which
-        # may be all-zeros for zero-drag robots), silently disabling the first call's forces.
-        self._combined_forces[:, 0:1]  = self._root_drag_force   # (N, 1, 3)
-        self._combined_forces[:, 1:]   = self._motor_forces       # (N, 4, 3)
-        self._combined_torques[:, 0:1] = self._root_drag_torque
-        self._combined_torques[:, 1:]  = self._motor_torques
+        if self._force_application_level == "motor_link":
+            self._combined_forces[:, 0:1]  = self._root_drag_force
+            self._combined_forces[:, 1:]   = self._motor_forces
+            self._combined_torques[:, 0:1] = self._root_drag_torque
+            self._combined_torques[:, 1:]  = self._motor_torques
+        else:
+            # base_link mode: add drag and motor wrench at root body (body 0)
+            self._combined_forces[:, 0:1]  = self._root_drag_force  + self._motor_forces
+            self._combined_torques[:, 0:1] = self._root_drag_torque + self._motor_torques
         self._robot.set_external_force_and_torque(
-            self._combined_forces,   # (N, 5, 3) — local body frame
-            self._combined_torques,  # (N, 5, 3) — local body frame
+            self._combined_forces,
+            self._combined_torques,
             body_ids=self._all_force_body_ids,
             env_ids=None,
         )
