@@ -50,10 +50,13 @@ class PositionSetpointEnvCfg(AerialGymBaseEnvCfg):
     observation_space: int = 13
     state_space: int = 0
 
-    # Task-specific
+    # Task-specific.
+    # Z is relative to env_origin, which is at ground level in Isaac Lab (flat terrain).
+    # Set to 1.5 to match the robot spawn height — task is "hover in place."
+    # In Isaac Gym, env_origin was above ground so z=0 meant flying height.
     target_position_x: float = 0.0
     target_position_y: float = 0.0
-    target_position_z: float = 0.0
+    target_position_z: float = 1.5
 
 
 class PositionSetpointEnv(AerialGymBaseEnv):
@@ -74,11 +77,19 @@ class PositionSetpointEnv(AerialGymBaseEnv):
     def __init__(self, cfg: PositionSetpointEnvCfg, render_mode=None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
 
-        # Target position (fixed for now, same as original task_config default)
-        self._target_position = torch.zeros(self.num_envs, 3, device=self.device)
-        self._target_position[:, 0] = cfg.target_position_x
-        self._target_position[:, 1] = cfg.target_position_y
-        self._target_position[:, 2] = cfg.target_position_z
+        # Initialize aerodynamic drag coefficients from robot config
+        # BaseQuadCfg.damping is all-zeros, so this is a no-op for base_quad.
+        # Non-zero drag robots (e.g. morphy) will override via their own subclass.
+        self._setup_drag_coefficients(BaseQuadCfg)
+
+        # Target position in world frame.
+        # In Isaac Lab, all envs coexist in one world space: each env's origin
+        # is at self._terrain.env_origins[i]. The target offset (from config) is
+        # relative to the env origin — same as how Isaac Gym treated it.
+        self._target_position = self._terrain.env_origins.clone()
+        self._target_position[:, 0] += cfg.target_position_x
+        self._target_position[:, 1] += cfg.target_position_y
+        self._target_position[:, 2] += cfg.target_position_z
 
         # Observation buffer
         self._obs_buf = torch.zeros(self.num_envs, cfg.observation_space, device=self.device)
@@ -183,8 +194,14 @@ class PositionSetpointEnv(AerialGymBaseEnv):
         else:
             env_ids_for_target = env_ids
 
-        # Fixed target at origin (matches original position_setpoint_task_config)
-        self._target_position[env_ids_for_target] = 0.0
+        # Target at env origin + configured offset (world frame).
+        # Must re-apply on every reset since env_origins is fixed but we rebuild.
+        self._target_position[env_ids_for_target] = (
+            self._terrain.env_origins[env_ids_for_target].clone()
+        )
+        self._target_position[env_ids_for_target, 0] += self.cfg.target_position_x
+        self._target_position[env_ids_for_target, 1] += self.cfg.target_position_y
+        self._target_position[env_ids_for_target, 2] += self.cfg.target_position_z
 
 
 # ---------------------------------------------------------------------------

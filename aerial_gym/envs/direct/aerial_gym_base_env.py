@@ -132,6 +132,28 @@ class AerialGymBaseEnv(DirectRLEnv):
         self.obs_dict["curriculum_level"] = torch.zeros(self.num_envs, device=self.device)
         self.obs_dict["curriculum_level_multiplier"] = torch.ones(self.num_envs, device=self.device)
 
+        # Drag coefficient defaults — all zero (no drag) until _setup_drag_coefficients() called
+        N, dev = self.num_envs, self.device
+        _zeros = torch.zeros(N, 3, device=dev)
+        self._linvel_lin_damp  = _zeros
+        self._linvel_quad_damp = _zeros
+        self._angvel_lin_damp  = _zeros
+        self._angvel_quad_damp = _zeros
+        # Drag force/torque buffers — (N, 1, 3); index 0 = root body slot in combined buffer
+        self._root_drag_force  = torch.zeros(N, 1, 3, device=dev)
+        self._root_drag_torque = torch.zeros(N, 1, 3, device=dev)
+
+        # Combined force buffer: root body (drag) + motor bodies (thrust) in one array.
+        # IMPORTANT: Isaac Lab's set_external_force_and_torque() sets has_external_wrench=False
+        # when the passed tensor is all-zeros, even if the internal buffer still holds non-zero
+        # values from a prior call. A second all-zero call (e.g. zero drag) would silently
+        # disable all previously set motor forces. Combining into one call avoids this.
+        # Layout: slot 0 = root body (drag), slots 1..4 = motors.
+        num_force_bodies = 1 + len(self._motor_body_ids)
+        self._all_force_body_ids = [0] + list(self._motor_body_ids)
+        self._combined_forces  = torch.zeros(N, num_force_bodies, 3, device=dev)
+        self._combined_torques = torch.zeros(N, num_force_bodies, 3, device=dev)
+
         logger.info(
             f"AerialGymBaseEnv: {self.num_envs} envs, "
             f"motor body IDs={self._motor_body_ids}, "
@@ -191,13 +213,19 @@ class AerialGymBaseEnv(DirectRLEnv):
         Apply per-motor forces/torques to the articulation.
         Called once per physics substep (decimation times per RL step).
         """
-        # Forces/torques are computed once in _pre_physics_step and reused
-        # for all decimation substeps (consistent with original aerial_gym behavior).
+        # Combine drag (root body slot 0) and motor thrust (slots 1..) into one call.
+        # A single set_external_force_and_torque() call is mandatory: calling it twice
+        # would overwrite has_external_wrench based on the second call's tensor (which
+        # may be all-zeros for zero-drag robots), silently disabling the first call's forces.
+        self._combined_forces[:, 0:1]  = self._root_drag_force   # (N, 1, 3)
+        self._combined_forces[:, 1:]   = self._motor_forces       # (N, 4, 3)
+        self._combined_torques[:, 0:1] = self._root_drag_torque
+        self._combined_torques[:, 1:]  = self._motor_torques
         self._robot.set_external_force_and_torque(
-            self._motor_forces,    # (num_envs, num_motors, 3) — local body frame
-            self._motor_torques,   # (num_envs, num_motors, 3) — local body frame
-            body_ids=self._motor_body_ids,
-            env_ids=None,          # all envs
+            self._combined_forces,   # (N, 5, 3) — local body frame
+            self._combined_torques,  # (N, 5, 3) — local body frame
+            body_ids=self._all_force_body_ids,
+            env_ids=None,
         )
 
     def _get_observations(self) -> dict:
@@ -380,16 +408,56 @@ class AerialGymBaseEnv(DirectRLEnv):
     def _compute_forces_from_actions(self, actions: torch.Tensor) -> None:
         """
         Run control allocation to convert RL actions → per-motor forces/torques.
-        Stores results in self._motor_forces and self._motor_torques.
+        Then add aerodynamic drag at the root body.
+        Stores results in self._motor_forces, self._motor_torques,
+        self._root_drag_force, self._root_drag_torque.
         """
-        # "forces" output mode: actions are directly target motor thrusts (4 values)
+        # Motor thrust: action → motor thrusts → per-motor body-frame forces
         motor_forces, motor_torques = self._control_allocator.allocate_output(
             actions, output_mode="forces"
         )
-        # motor_forces: (num_envs, 4, 3) — local body frame, z-component is thrust
-        # motor_torques: (num_envs, 4, 3) — local body frame, z-component is reaction torque
+        # motor_forces: (num_envs, 4, 3) — local body frame
         self._motor_forces = motor_forces
         self._motor_torques = motor_torques
+
+        # Aerodynamic drag at root body (body 0 / base_link)
+        # From base_multirotor.simulate_drag() — uses body-frame velocities
+        # populated by _update_derived_state() in the previous _get_observations().
+        body_linvel = self.obs_dict["robot_body_linvel"]   # (N, 3) body frame
+        body_angvel = self.obs_dict["robot_body_angvel"]   # (N, 3) body frame
+
+        drag_force = (
+            -self._linvel_lin_damp * body_linvel
+            - self._linvel_quad_damp * torch.norm(body_linvel, dim=-1, keepdim=True) * body_linvel
+        )
+        drag_torque = (
+            -self._angvel_lin_damp * body_angvel
+            - self._angvel_quad_damp * body_angvel.abs() * body_angvel
+        )
+
+        # Shape: (N, 1, 3) — one root body per env
+        self._root_drag_force = drag_force.unsqueeze(1)
+        self._root_drag_torque = drag_torque.unsqueeze(1)
+
+    def _setup_drag_coefficients(self, robot_cfg) -> None:
+        """
+        Initialize drag coefficient tensors from robot damping config.
+        Must be called from subclass __init__ after super().__init__().
+
+        Pass the robot config class (e.g., BaseQuadCfg).
+        If damping config is absent or all-zeros, drag is a no-op.
+        """
+        N, dev = self.num_envs, self.device
+        damp = getattr(robot_cfg, "damping", None)
+
+        def _coeff(attr, default):
+            val = getattr(damp, attr, default) if damp else default
+            return torch.tensor(val, device=dev, dtype=torch.float32).expand(N, 3)
+
+        self._linvel_lin_damp  = _coeff("linvel_linear_damping_coefficient",  [0.0, 0.0, 0.0])
+        self._linvel_quad_damp = _coeff("linvel_quadratic_damping_coefficient", [0.0, 0.0, 0.0])
+        self._angvel_lin_damp  = _coeff("angular_linear_damping_coefficient",  [0.0, 0.0, 0.0])
+        self._angvel_quad_damp = _coeff("angular_quadratic_damping_coefficient",[0.0, 0.0, 0.0])
 
     def _find_motor_body_ids(self) -> None:
         """

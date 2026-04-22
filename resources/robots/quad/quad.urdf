@@ -32,8 +32,8 @@
       </material>
     </visual>
     <inertial>
-      <mass value="0.0"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <mass value="0.001"/>
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-06" iyz="0.0" izx="0.0" izy="0.0" izz="1e-06"/>
     </inertial>
   </link>
   <joint name="base_link_to_arm_motor_0" type="fixed" dont_collapse="false">
@@ -53,7 +53,7 @@
     </visual>
     <inertial>
       <mass value="0.006249999999999999"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <inertia ixx="1e-07" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-07" iyz="0.0" izx="0.0" izy="0.0" izz="1e-07"/>
     </inertial>
   </link>
   <joint name="base_link_to_motor_0" type="fixed" dont_collapse="false">
@@ -72,8 +72,8 @@
       </material>
     </visual>
     <inertial>
-      <mass value="0.0"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <mass value="0.001"/>
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-06" iyz="0.0" izx="0.0" izy="0.0" izz="1e-06"/>
     </inertial>
   </link>
   <joint name="base_link_to_arm_motor_1" type="fixed" dont_collapse="false">
@@ -93,7 +93,7 @@
     </visual>
     <inertial>
       <mass value="0.006249999999999999"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <inertia ixx="1e-07" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-07" iyz="0.0" izx="0.0" izy="0.0" izz="1e-07"/>
     </inertial>
   </link>
   <joint name="base_link_to_motor_1" type="fixed" dont_collapse="false">
@@ -112,8 +112,8 @@
       </material>
     </visual>
     <inertial>
-      <mass value="0.0"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <mass value="0.001"/>
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-06" iyz="0.0" izx="0.0" izy="0.0" izz="1e-06"/>
     </inertial>
   </link>
   <joint name="base_link_to_arm_motor_2" type="fixed" dont_collapse="false">
@@ -133,7 +133,7 @@
     </visual>
     <inertial>
       <mass value="0.006249999999999999"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <inertia ixx="1e-07" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-07" iyz="0.0" izx="0.0" izy="0.0" izz="1e-07"/>
     </inertial>
   </link>
   <joint name="base_link_to_motor_2" type="fixed" dont_collapse="false">
@@ -152,8 +152,8 @@
       </material>
     </visual>
     <inertial>
-      <mass value="0.0"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <mass value="0.001"/>
+      <inertia ixx="1e-06" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-06" iyz="0.0" izx="0.0" izy="0.0" izz="1e-06"/>
     </inertial>
   </link>
   <joint name="base_link_to_arm_motor_3" type="fixed" dont_collapse="false">
@@ -173,7 +173,7 @@
     </visual>
     <inertial>
       <mass value="0.006249999999999999"/>
-      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyx="0.0" iyy="0.0" iyz="0.0" izx="0.0" izy="0.0" izz="0.0"/>
+      <inertia ixx="1e-07" ixy="0.0" ixz="0.0" iyx="0.0" iyy="1e-07" iyz="0.0" izx="0.0" izy="0.0" izz="1e-07"/>
     </inertial>
   </link>
   <joint name="base_link_to_motor_3" type="fixed" dont_collapse="false">
