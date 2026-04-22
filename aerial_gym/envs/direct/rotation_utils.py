@@ -57,21 +57,19 @@ def matrix_to_euler_angles(R: Tensor, convention: str) -> Tensor:
         convention: e.g. "ZYX" (matches pytorch3d convention name)
 
     Returns:
-        (..., 3) Euler angles in radians
+        (..., 3) Euler angles [roll, pitch, yaw] in radians (smallest signed angle)
     """
-    from isaaclab.utils.math import euler_xyz_from_quat, quat_from_matrix
+    from isaaclab.utils.math import quat_from_matrix
+    from aerial_gym.utils.math import get_euler_xyz_tensor, ssa
 
     if convention != "ZYX":
         raise ValueError(f"Only ZYX convention supported, got {convention}")
 
-    # Convert R → quat (wxyz) → euler
+    # R → quat wxyz → xyzw, then use aerial_gym's correct euler extraction
     q_wxyz = quat_from_matrix(R)
-    # Isaac Lab euler_xyz_from_quat returns (roll, pitch, yaw) for xyzw quat
-    q_xyzw = torch.roll(q_wxyz, -1, dims=-1)
-    roll, pitch, yaw = euler_xyz_from_quat(q_xyzw)
-
-    # ZYX convention: return as (roll, pitch, yaw) = (x, y, z) angles
-    return torch.stack([roll, pitch, yaw], dim=-1)
+    q_xyzw = torch.roll(q_wxyz, -1, dims=-1)  # wxyz → xyzw
+    euler = get_euler_xyz_tensor(q_xyzw)       # [roll, pitch, yaw] in [0, 2π)
+    return ssa(euler)                          # map to [-π, π]
 
 
 def euler_angles_to_matrix(angles: Tensor, convention: str) -> Tensor:
@@ -79,8 +77,8 @@ def euler_angles_to_matrix(angles: Tensor, convention: str) -> Tensor:
     Convert Euler angles to rotation matrix.
 
     Args:
-        angles: (..., 3) Euler angles in radians
-        convention: e.g. "ZYX"
+        angles: (..., 3) Euler angles [roll, pitch, yaw] in radians
+        convention: "ZYX" only
 
     Returns:
         (..., 3, 3) rotation matrix
@@ -90,5 +88,8 @@ def euler_angles_to_matrix(angles: Tensor, convention: str) -> Tensor:
     if convention != "ZYX":
         raise ValueError(f"Only ZYX convention supported, got {convention}")
 
-    # matrix_from_euler expects (roll, pitch, yaw) — same as ZYX angles order
-    return matrix_from_euler(angles, convention="ZYX")
+    # matrix_from_euler("ZYX") expects [yaw, pitch, roll] (Z angle at index 0).
+    # Our callers pass [roll, pitch, yaw] (aerial_gym / get_euler_xyz_tensor order).
+    # Reorder: [..., 0]=roll, [..., 1]=pitch, [..., 2]=yaw  →  [yaw, pitch, roll]
+    angles_zyx = angles[..., [2, 1, 0]]
+    return matrix_from_euler(angles_zyx, convention="ZYX")
