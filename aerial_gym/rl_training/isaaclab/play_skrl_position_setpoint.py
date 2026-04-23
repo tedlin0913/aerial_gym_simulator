@@ -73,12 +73,14 @@ def main():
     runner.agent.set_running_mode("eval")
 
     # Inference loop — runs until the Isaac Sim window is closed
+    # NOTE: pass obs directly (not wrapped in {"states": ...}) — the skrl wrapper
+    # already formats observations the way agent.act() expects them.
     obs, _ = env.reset()
     step = 0
     print("[INFO] Running. Close the Isaac Sim window to exit.", flush=True)
     while simulation_app.is_running():
         with torch.no_grad():
-            actions, _, _ = runner.agent.act({"states": obs}, timestep=0, timesteps=0)
+            actions, _, _ = runner.agent.act(obs, timestep=0, timesteps=0)
         obs, rewards, terminated, truncated, _ = env.step(actions)
         step += 1
         if step % 200 == 0:
