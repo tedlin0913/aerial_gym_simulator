@@ -5,11 +5,11 @@ models:
   separate: False
   policy:
     class: GaussianMixin
-    clip_actions: True          # tanh squish to (-1,1) — fixes log_prob/env clamp mismatch
+    clip_actions: True          # tanh squish to (-1,1), fixes log_prob mismatch
     clip_log_std: True
     min_log_std: -20.0
-    max_log_std: 0.0            # cap std at exp(0)=1.0; original used fixed_sigma≈1.0
-    initial_log_std: 0.0        # matches original sigma_init val: 0 → std=1.0
+    max_log_std: 0.0            # cap std at exp(0)=1.0; original used fixed_sigma1.0
+    initial_log_std: 0.0        # matches original sigma_init val: 0  std=1.0
     network:
       - name: net
         input: STATES
@@ -55,7 +55,7 @@ agent:
   entropy_loss_scale: 0.0001   # matches original entropy_coef: 0.0001
   value_loss_scale: 1.0
   kl_threshold: 0.0
-  rewards_shaper_scale: 0.1   # matches original scale_value: 0.1 (was 0.01 → 10× too small)
+  rewards_shaper_scale: 0.1   # matches original scale_value: 0.1 (was 0.01  10 too small)
   time_limit_bootstrap: True
   experiment:
     directory: "position_setpoint_isaaclab"
