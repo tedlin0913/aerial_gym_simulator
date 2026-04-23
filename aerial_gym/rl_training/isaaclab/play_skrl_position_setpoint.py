@@ -68,6 +68,12 @@ def main():
 
     runner = Runner(env, agent_cfg)
 
+    # Warmup: one forward pass to initialize LazyLinear input dimensions
+    # BEFORE loading the checkpoint, otherwise weights can't be restored.
+    obs, _ = env.reset()
+    with torch.no_grad():
+        runner.agent.act(obs, timestep=0, timesteps=0)
+
     print(f"[INFO] Loading checkpoint: {args.checkpoint}", flush=True)
     runner.agent.load(args.checkpoint)
     runner.agent.set_running_mode("eval")
