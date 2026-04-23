@@ -220,7 +220,9 @@ End-to-end and x500 envs use 6D continuous rotation (first two columns of the ro
 
 ---
 
-## Citation
+## Acknowledgements
+
+This project is a fork of the [Aerial Gym Simulator](https://github.com/ntnu-arl/aerial_gym_simulator) by Mihir Kulkarni, Welf Rehberg, and Kostas Alexis at the [Autonomous Robots Lab, NTNU](https://www.autonomousrobotslab.com). If you use this work in your research, please cite the original paper:
 
 ```bibtex
 @ARTICLE{kulkarni2025aerial,
