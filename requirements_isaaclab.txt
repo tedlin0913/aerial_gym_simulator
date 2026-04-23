@@ -1,0 +1,17 @@
+# Aerial Gym Simulator — Isaac Lab edition
+# Install inside the Isaac Sim Python environment:
+#   /path/to/isaacsim/python.sh -m pip install -r requirements_isaaclab.txt
+#
+# Tested with:
+#   Isaac Sim  4.5.0
+#   Isaac Lab  2.1.0 (isaaclab 0.40.5)
+#   Python     3.10.15
+#   CUDA       11.8  (torch 2.5.1+cu118)
+
+skrl==1.4.3
+warp-lang==1.0.0
+numpy==1.26.0
+scipy==1.10.1
+matplotlib==3.8.4
+networkx==3.4.2
+pyyaml==6.0.1
