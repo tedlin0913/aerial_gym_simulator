@@ -1,0 +1,35 @@
+name: Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "README.md"
+  workflow_dispatch:   # allow manual trigger from the Actions tab
+
+permissions:
+  contents: write    # needed to push to gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for git-revision-date plugin
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MkDocs + Material theme
+        run: |
+          pip install \
+            mkdocs==1.6.1 \
+            mkdocs-material==9.7.6 \
+            pymdown-extensions==10.21.2
+
+      - name: Deploy
+        run: mkdocs gh-deploy --force
