@@ -1,7 +1,7 @@
 site_name: Aerial Gym Simulator
-site_url: https://tedlin0913.github.io/aerial_gym_simulator/
-repo_url: https://github.com/tedlin0913/aerial_gym_simulator
-repo_name: tedlin0913/aerial_gym_simulator
+site_url: https://tedlin0913.github.io/aerial_lab/
+repo_url: https://github.com/tedlin0913/aerial_lab
+repo_name: tedlin0913/aerial_lab
 
 nav:
   - Home: 'index.md'

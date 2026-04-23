@@ -2,7 +2,7 @@
 
 # [:arl-arl-logo: Aerial Gym Simulator — Isaac Lab Edition](index.md)
 
-Welcome to the documentation of the Aerial Gym Simulator (Isaac Lab Edition) &nbsp;&nbsp; [:fontawesome-brands-github:](https://www.github.com/tedlin0913/aerial_gym_simulator)
+Welcome to the documentation of the Aerial Gym Simulator (Isaac Lab Edition) &nbsp;&nbsp; [:fontawesome-brands-github:](https://www.github.com/tedlin0913/aerial_lab)
 
 The Aerial Gym Simulator is a high-fidelity, GPU-accelerated simulator for training Micro Aerial Vehicle (MAV) platforms to learn to fly using reinforcement learning. This fork has been **fully ported to [NVIDIA Isaac Lab](https://isaac-sim.github.io/IsaacLab/)** (Isaac Sim 4.5.0), replacing the deprecated Isaac Gym backend. We offer aerial robot models for standard quadrotor platforms (base quad, x500, lmf2), each with a dedicated reinforcement learning environment and reward function. Policies train in minutes on a single GPU and can be visualized live in the Isaac Sim GUI.
 
@@ -92,7 +92,7 @@ When referencing the Aerial Gym Simulator in your research, please cite the orig
 
 Ted Lin &nbsp;&nbsp;&nbsp;&nbsp; [GitHub](https://github.com/tedlin0913)
 
-For bugs and feature requests, please open an [Issue](https://github.com/tedlin0913/aerial_gym_simulator/issues) on GitHub.
+For bugs and feature requests, please open an [Issue](https://github.com/tedlin0913/aerial_lab/issues) on GitHub.
 
 The original Aerial Gym Simulator was developed at the [Autonomous Robots Lab](https://www.autonomousrobotslab.com), [Norwegian University of Science and Technology (NTNU)](https://www.ntnu.no).
 
@@ -104,4 +104,4 @@ This Isaac Lab edition builds on the original [Aerial Gym Simulator](https://git
 
 ## FAQs and Troubleshooting
 
-See the [FAQ page](./7_FAQ_and_troubleshooting.md) or open an [Issue](https://github.com/tedlin0913/aerial_gym_simulator/issues) on GitHub.
+See the [FAQ page](./7_FAQ_and_troubleshooting.md) or open an [Issue](https://github.com/tedlin0913/aerial_lab/issues) on GitHub.

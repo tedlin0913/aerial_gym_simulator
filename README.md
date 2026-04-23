@@ -70,8 +70,8 @@ Verify:
 ### 2. Clone this repo
 
 ```bash
-git clone https://github.com/tedlin0913/aerial_gym_simulator.git
-cd aerial_gym_simulator
+git clone https://github.com/tedlin0913/aerial_lab.git
+cd aerial_lab
 ```
 
 ### 3. Install dependencies
